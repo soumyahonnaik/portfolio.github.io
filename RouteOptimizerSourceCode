@@ -1,0 +1,431 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <map>
+#include <cmath>
+#include <cstdlib>
+#include <iomanip>
+#include <limits>
+#include <queue>
+#include <stack>
+#include <climits>
+#include <algorithm>
+#include <chrono>
+#include <fstream>
+
+using namespace std;
+
+// Struct to store route input
+typedef struct RouteInput
+{
+    // The starting point of the route (e.g., city or location name)
+    std::string source;
+    // The end point of the route
+    std::string destination;
+    // Number of passengers for the trip
+    int passengers;
+    // Amount of fuel available for the trip (in liters or another unit)
+    int fuelAvailable;
+    // Vehicle mileage (distance covered per unit of fuel, e.g., km/l or miles/gallon)
+    double mileage;
+} 
+RouteInput;
+
+// Function to display the menu and take input
+RouteInput getInput()
+{
+    RouteInput input;
+
+    std::cout << "Sales Route Optimizer\n";
+    std::cout << "======================\n\n";
+
+    std::cout << "Available Locations:\n";
+    std::cout << "1. Central Bus Stand\n";
+    std::cout << "2. Belagavi Railway Station\n";
+    std::cout << "3. KLE University\n";
+    std::cout << "4. Tilakwadi\n";
+    std::cout << "5. Camp Area\n";
+    std::cout << "6. Fort Lake\n";
+    std::cout << "7. Shivaji Garden\n";
+    std::cout << "8. Ramdev Hotel\n";
+    std::cout << "9. RPD College\n";
+    std::cout << "10. Military Mahadev Temple\n\n";
+
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    // Source
+    std::cout << "Enter Source Location: ";
+    std::getline(std::cin, input.source);
+
+    // Destination
+    std::cout << "Enter Destination Location: ";
+    std::getline(std::cin, input.destination);
+
+    // Number of Passengers
+    std::cout << "Enter Number of Passengers: ";
+    std::cin >> input.passengers;
+    while (std::cin.fail() || input.passengers <= 0)
+        {
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::cout << "Invalid input. Enter a positive integer: ";
+        std::cin >> input.passengers;
+    }
+
+    // Fuel Available
+    std::cout << "Enter Fuel Available (in liters): ";
+    std::cin >> input.fuelAvailable;
+    while (std::cin.fail() || input.fuelAvailable <= 0)
+        {
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::cout << "Invalid input. Enter a positive integer: ";
+        std::cin >> input.fuelAvailable;
+    }
+
+    // Mileage
+    std::cout << "Enter Mileage (km/l, enter -1 if unknown): ";
+    std::cin >> input.mileage;
+    while (std::cin.fail() || input.mileage < -1)
+        {
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::cout << "Invalid input. Enter a valid mileage or -1: ";
+        std::cin >> input.mileage;
+    }
+
+    return input;
+}
+
+// Function to display the input data
+void displayInput(const RouteInput& input)
+{
+    std::cout << "\nYou have entered the following details:\n";
+    std::cout << "Source: " << input.source << "\n";
+    std::cout << "Destination: " << input.destination << "\n";
+    std::cout << "Number of Passengers: " << input.passengers << "\n";
+    std::cout << "Fuel Available: " << input.fuelAvailable << " liters\n";
+    if (input.mileage > 0)
+        {
+        std::cout << "Mileage: " << input.mileage << " km/l\n";
+    }
+    else
+        {
+        std::cout << "Mileage: Not provided\n";
+    }
+}
+
+class Graph
+{
+private:
+    int V; // Number of vertices
+    vector<vector<int>> adj; // Adjacency matrix
+
+public:
+    Graph(int vertices, const vector<vector<int>>& matrix) : V(vertices)
+    {
+        adj = matrix;
+    }
+
+    void dijkstra(int source, int destination, vector<int>& path)
+    {
+        vector<int> dist(V, INT_MAX);
+        vector<bool> visited(V, false);
+        vector<int> parent(V, -1);
+
+        dist[source] = 0;
+
+        for (int count = 0; count < V - 1; count++)
+            {
+            int u = -1;
+            int minDist = INT_MAX;
+
+            for (int v = 0; v < V; v++)
+                {
+                if (!visited[v] && dist[v] < minDist)
+                {
+                    minDist = dist[v];
+                    u = v;
+                }
+            }
+
+            if (u == -1) break;
+
+            visited[u] = true;
+
+            for (int v = 0; v < V; v++)
+                {
+                if (!visited[v] && adj[u][v] &&
+                    dist[u] != INT_MAX &&
+                    dist[u] + adj[u][v] < dist[v])
+                    {
+                    dist[v] = dist[u] + adj[u][v];
+                    parent[v] = u;
+                }
+            }
+        }
+
+        path.clear();
+        for (int at = destination; at != -1; at = parent[at])
+            {
+            path.push_back(at);
+        }
+        reverse(path.begin(), path.end());
+    }
+
+    int getTotalDistance(const vector<int>& path)
+    {
+        int distance = 0;
+        for (size_t i = 0; i < path.size() - 1; i++)
+            {
+            distance += adj[path[i]][path[i + 1]];
+        }
+        return distance;
+    }
+};
+
+class CostCalculator
+{
+public:
+    static double calculateFuelCost(int distance, double mileage, double petrolPrice)
+    {
+        if (mileage <= 0)
+            {
+            cout << "Error: Mileage must be greater than 0 to calculate fuel cost.\n";
+            return 0;
+        }
+        double fuelRequired = static_cast<double>(distance) / mileage;
+        return fuelRequired * petrolPrice;
+    }
+
+    static double calculatePassengerCost(int passengers, double ratePerPassenger)
+    {
+        if (passengers <= 0) return 0;
+        return passengers * ratePerPassenger;
+    }
+
+    static double calculateTollCharges(int tollSegments, double tollRate)
+    {
+        if (tollSegments < 0) return 0;
+        return tollSegments * tollRate;
+    }
+
+    static double calculateMaintenanceCost(int distance, double maintenanceCostPerKm)
+    {
+        if (distance <= 0) return 0;
+        return distance * maintenanceCostPerKm;
+    }
+};
+
+void generateHtmlVisualization(const vector<string>& places, const vector<vector<int>>& matrix, const vector<int>& path)
+{
+    ofstream htmlFile("route_visualization.html");
+
+    htmlFile << R"(<!DOCTYPE html>
+<html>
+<head>
+    <title>Belagavi Route Visualization</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+    <style>
+        #mynetwork {
+            width: 800px;
+            height: 600px;
+            border: 1px solid lightgray;
+            background: #f8f9fa;
+        }
+        .controls {
+            margin: 20px;
+            padding: 20px;
+            background: #f1f1f1;
+            border-radius: 8px;
+        }
+        #path {
+            margin: 20px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h2>Current Route Visualization</h2>
+    </div>
+    <div id="mynetwork"></div>
+    <div id="path"></div>
+
+    <script type="text/javascript">)";
+
+    // Write places array
+    htmlFile << "\nconst places = [";
+    for (size_t i = 0; i < places.size(); i++)
+        {
+        htmlFile << "\"" << places[i] << "\"";
+        if (i < places.size() - 1) htmlFile << ", ";
+    }
+    htmlFile << "];\n";
+
+    // Write matrix
+    htmlFile << "\nconst matrix = [\n";
+    for (const auto& row : matrix)
+        {
+        htmlFile << "    [";
+        for (size_t i = 0; i < row.size(); i++)
+        {
+            htmlFile << row[i];
+            if (i < row.size() - 1) htmlFile << ", ";
+        }
+        htmlFile << "],\n";
+    }
+    htmlFile << "];\n";
+
+    // Write current path
+    htmlFile << "\nconst currentPath = [";
+    for (size_t i = 0; i < path.size(); i++)
+        {
+        htmlFile << path[i];
+        if (i < path.size() - 1) htmlFile << ", ";
+    }
+    htmlFile << "];\n";
+
+    // Continue with the visualization code
+    htmlFile << R"(
+        // Create nodes
+        const nodes = new vis.DataSet(
+            places.map((place, index) => ({
+                id: index,
+                label: place,
+                color: {
+                    background: currentPath.includes(index) ? '#ffdd00' : '#97C2FC',
+                    border: '#2B7CE9'
+                }
+            }))
+        );
+
+        // Create edges
+        const edges = new vis.DataSet();
+        for (let i = 0; i < matrix.length; i++) {
+            for (let j = i + 1; j < matrix[i].length; j++) {
+                if (matrix[i][j] > 0) {
+                    const isInPath = currentPath.includes(i) &&
+                                   currentPath.includes(j) &&
+                                   Math.abs(currentPath.indexOf(i) - currentPath.indexOf(j)) === 1;
+                    edges.add({
+                        from: i,
+                        to: j,
+                        label: matrix[i][j].toString(),
+                        width: isInPath ? 3 : 1,
+                        color: {
+                            color: isInPath ? '#ff0000' : '#848484'
+                        }
+                    });
+                }
+            }
+        }
+
+        // Create network
+        const container = document.getElementById('mynetwork');
+        const data = { nodes, edges };
+        const options = {
+            physics: {
+                enabled: true,
+                barnesHut: {
+                    gravitationalConstant: -2000,
+                    springLength: 200,
+                    springConstant: 0.04
+                }
+            },
+            edges: {
+                smooth: {
+                    type: 'continuous'
+                }
+            }
+        };
+
+        // Initialize network
+        const network = new vis.Network(container, data, options);
+
+        // Display path information
+        document.getElementById('path').innerHTML =
+            'Path: ' + currentPath.map(p => places[p]).join(' to ');
+    </script>
+</body>
+</html>)";
+
+    htmlFile.close();
+
+    cout << "\nVisualization has been generated. Open 'route_visualization.html' in your web browser to view it.\n";
+}
+
+int main()
+{
+    RouteInput input = getInput();
+    displayInput(input);
+
+    // Places in Belagavi
+    vector<string> places =
+    {
+        "Central Bus Stand", "Belagavi Railway Station", "KLE University",
+        "Tilakwadi", "Camp Area", "Fort Lake", "Shivaji Garden",
+        "Ramdev Hotel", "RPD College", "Military Mahadev Temple"
+    };
+
+    // Create map of locations and their indices
+    map<string, int> locationIndices;
+    for (size_t i = 0; i < places.size(); i++)
+        {
+        locationIndices[places[i]] = i;
+    }
+
+    // Adjacency Matrix
+    vector<vector<int>> matrix =
+    {
+       {0, 2, 5, 0, 3, 6, 7, 0, 8, 9},   // Central Bus Stand
+       {2, 0, 0, 6, 0, 3, 7, 9, 0, 8},   // Belagavi Railway Station
+       {5, 0, 0, 8, 0, 4, 0, 0, 5, 0},   // KLE University
+       {0, 6, 8, 0, 5, 6, 4, 0, 7, 0},   // Tilakwadi
+       {3, 0, 0, 5, 0, 2, 0, 0, 3, 5},   // Camp Area
+       {6, 3, 4, 6, 2, 0, 5, 8, 6, 3},   // Fort Lake
+       {7, 7, 0, 4, 0, 5, 0, 0, 5, 4},   // Shivaji Garden
+       {0, 9, 0, 0, 0, 8, 0, 0, 0, 2},   // Ramdev Hotel
+       {8, 0, 5, 7, 3, 6, 5, 0, 0, 5},   // RPD College
+       {9, 8, 0, 0, 5, 3, 4, 2, 5, 0}    // Military Mahadev Temple
+    };
+
+    // Create Graph and get the shortest path
+    Graph g(places.size(), matrix);
+    vector<int> path;
+    g.dijkstra(locationIndices[input.source], locationIndices[input.destination], path);
+    int totalDistance = g.getTotalDistance(path);
+
+    // Calculate Costs
+    double fuelCost = 0.0, passengerCost = 0.0, tollCost = 0.0, maintenanceCost = 0.0;
+    const double petrolPrice = 90.0, ratePerPassenger = 50.0, tollRate = 30.0, maintenanceCostPerKm = 5.0;
+    int tollSegments = path.size() - 1;
+
+    if (input.mileage > 0)
+        {
+        fuelCost = CostCalculator::calculateFuelCost(totalDistance, input.mileage, petrolPrice);
+    }
+    else
+    {
+        cout << "Mileage not provided, skipping fuel cost calculation.\n";
+    }
+
+    passengerCost = CostCalculator::calculatePassengerCost(input.passengers, ratePerPassenger);
+    tollCost = CostCalculator::calculateTollCharges(tollSegments, tollRate);
+    maintenanceCost = CostCalculator::calculateMaintenanceCost(totalDistance, maintenanceCostPerKm);
+
+    // Display costs
+    cout << "\nTotal Distance: " << totalDistance << " km\n";
+    cout << "Fuel Cost: rs." << fixed << setprecision(2) << fuelCost << "\n";
+    cout << "Passenger Cost: rs." << fixed << setprecision(2) << passengerCost << "\n";
+    cout << "Toll Charges: rs." << fixed << setprecision(2) << tollCost << "\n";
+    cout << "Maintenance Cost: rs." << fixed << setprecision(2) << maintenanceCost << "\n";
+
+    // Generate HTML visualization
+    generateHtmlVisualization(places, matrix, path);
+
+    return 0;
+}
